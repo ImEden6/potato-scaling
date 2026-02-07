@@ -27,8 +27,11 @@ public class PotatoProjectileMixin {
         }
 
         ScalingConfig config = ScalingConfig.get();
-        float currentDamage = originalDamage;
 
+        // Base formula: (base * multiplier) + additive
+        float currentDamage = (originalDamage * config.damageMultiplier) + config.damageAdditive;
+
+        // Apply attribute bonuses
         for (ScalingConfig.CachedEntry entry : config.cachedEntries) {
             EntityAttribute attribute = Registries.ATTRIBUTE.get(entry.attributeId);
             if (attribute == null)
@@ -46,10 +49,7 @@ public class PotatoProjectileMixin {
                 if (entry.op == ScalingConfig.Operation.ADD) {
                     currentDamage += adjustment;
                 } else if (entry.op == ScalingConfig.Operation.MULTIPLY) {
-                    // Logic: If I have 3.0 Attribute and mult is 1.0, and mode is MULTIPLY
-                    // Do I multiply the DAMAGE by 3.0? -> Damage * 3.0
-                    // YES. Interpretation: "Scale damage by this attribute" usually means
-                    // multiplication.
+                    // Interpretation: Multiplier applies to the running total
                     currentDamage *= adjustment;
                 }
             }
