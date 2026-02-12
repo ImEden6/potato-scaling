@@ -1,0 +1,71 @@
+plugins {
+	id 'fabric-loom' version '1.5-SNAPSHOT'
+	id 'maven-publish'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+	archivesName = project.archives_base_name
+}
+
+repositories {
+    mavenLocal()
+	maven { url "https://maven.fabricmc.net/" }
+    maven { url "https://mvn.devos.one/snapshots/" } // Create Fabric
+    maven { url "https://mvn.devos.one/releases/" } // Create Fabric
+    maven { url "https://raw.githubusercontent.com/Fuzss/modresources/main/maven/" } // Porting Lib
+    maven { url "https://jitpack.io" } // MixinExtras
+    maven { url "https://maven.jamieswhiteshirt.com/libs-release" } // Reach Entity Attributes
+    maven { url "https://maven.shedaniel.me/" } // Cloth Config
+    maven { url "https://maven.terraformersmc.com/releases/" } // Mod Menu
+    maven { url "https://api.modrinth.com/maven" } // Modrinth
+    maven { url "https://maven.tterrag.com/" } // Flywheel
+    maven { url "https://maven.createmod.net" } // Create (Official)
+}
+
+dependencies {
+	// Minecraft and Fabric
+	minecraft "com.mojang:minecraft:${project.minecraft_version}"
+	mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+	modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+
+	// Fabric API
+	modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+
+    // Create Fabric
+    modImplementation("com.simibubi.create:create-fabric-1.20.1:${project.create_fabric_version}") {
+        exclude group: 'com.jozufozu.flywheel', module: 'flywheel-fabric-1.20.1'
+    }
+
+    // Soft Dependencies (Compile Only + Runtime)
+    // modCompileOnly "maven.modrinth:spell-power:${project.spell_power_version}-fabric"
+    // modCompileOnly "maven.modrinth:puffish-attributes:${project.puffish_attributes_version}"
+    
+    // Config (Optional, but using standard GSON, no extra dep needed yet)
+}
+
+processResources {
+	inputs.property "version", project.version
+
+	filesMatching("fabric.mod.json") {
+		expand "version": project.version
+	}
+}
+
+tasks.withType(JavaCompile).configureEach {
+	it.options.release = 17
+}
+
+java {
+	withSourcesJar()
+	sourceCompatibility = JavaVersion.VERSION_17
+	targetCompatibility = JavaVersion.VERSION_17
+}
+
+jar {
+	from("LICENSE") {
+		rename { "${it}_${project.base.archivesName.get()}"}
+	}
+}
