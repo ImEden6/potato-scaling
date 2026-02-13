@@ -1,11 +1,5 @@
 package net.mervyn.potatoscaling.config;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import net.fabricmc.loader.api.FabricLoader;
-import net.mervyn.potatoscaling.PotatoScalingMod;
-import net.minecraft.util.Identifier;
-
 import java.io.File;
 import java.io.FileReader;
 import java.io.FileWriter;
@@ -13,11 +7,18 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+
+import net.fabricmc.loader.api.FabricLoader;
+import net.mervyn.potatoscaling.PotatoScalingMod;
+import net.minecraft.util.Identifier;
+
 public class ScalingConfig {
 
     private static final File CONFIG_FILE = FabricLoader.getInstance().getConfigDir().resolve("potatoscaling.json")
             .toFile();
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
+    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
 
     public static ScalingConfig INSTANCE = new ScalingConfig();
 
@@ -85,8 +86,6 @@ public class ScalingConfig {
                 }
             } catch (IOException e) {
                 PotatoScalingMod.LOGGER.error("Failed to load potatoscaling.json", e);
-                // If load fails, we rely on the default INSTANCE created at top,
-                // but we should ensure it has defaults if it's "fresh"
             }
         } else {
             // Setup defaults for a new file
