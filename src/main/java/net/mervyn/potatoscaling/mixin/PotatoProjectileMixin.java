@@ -26,17 +26,18 @@ public class PotatoProjectileMixin {
             return originalDamage;
         }
 
-        ScalingConfig config = ScalingConfig.get();
+        ScalingConfig config = net.mervyn.potatoscaling.PotatoScalingMod.configManager.value;
 
-        // Base formula: (base * multiplier) + additive
-        float baseCalculation = (originalDamage * config.damageMultiplier) + config.damageAdditive;
+        float scalingFactor = config.damageScalingFactor;
+        if (scalingFactor == 0)
+            scalingFactor = 1.0f;
+
         float attributeBonus = 0.0f;
 
-        // Apply attribute bonuses
-        // Formula: Final = BaseCalculation + AttributeBonus
+        // Calculate Attribute Bonus
         if (config.cachedEntries != null) {
             for (ScalingConfig.CachedEntry entry : config.cachedEntries) {
-                EntityAttribute attribute = Registries.ATTRIBUTE.get(entry.attributeId);
+                EntityAttribute attribute = Registries.ATTRIBUTE.get(entry.attributeId());
                 if (attribute == null)
                     continue;
 
@@ -46,20 +47,15 @@ public class PotatoProjectileMixin {
                     if (Double.isNaN(attrValue) || Double.isInfinite(attrValue)) {
                         continue;
                     }
-
-                    if (entry.op == ScalingConfig.Operation.ADD) {
-                        // ADD: Bonus += AttributeValue * Multiplier
-                        attributeBonus += (float) (attrValue * entry.multiplier);
-                    } else if (entry.op == ScalingConfig.Operation.MULTIPLY) {
-                        // MULTIPLY: Bonus += OriginalDamage * AttributeValue * Multiplier
-                        // This makes it a % increase based on the attribute value
-                        attributeBonus += (float) (originalDamage * attrValue * entry.multiplier);
-                    }
+                    // Sum up attribute values * configured multiplier
+                    attributeBonus += (float) (attrValue * entry.multiplier());
                 }
             }
         }
 
-        float currentDamage = baseCalculation + attributeBonus;
+        // Formula: Final Damage = (Base + Additive) * (1 + Attribute Bonus / Scaling
+        // Factor)
+        float currentDamage = (originalDamage + config.damageAdditive) * (1 + (attributeBonus / scalingFactor));
 
         if (currentDamage < 0.0f) {
             currentDamage = 0.0f;

@@ -1,136 +1,65 @@
 package net.mervyn.potatoscaling.config;
 
-import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
-import java.io.IOException;
+import net.tinyconfig.versioning.VersionableConfig;
+import net.mervyn.potatoscaling.PotatoScalingMod;
+import net.minecraft.util.Identifier;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
+public class ScalingConfig extends VersionableConfig {
 
-import net.fabricmc.loader.api.FabricLoader;
-import net.mervyn.potatoscaling.PotatoScalingMod;
-import net.minecraft.util.Identifier;
+    public String _comment = "Formula: Final Damage = (Base + Additive) * (1 + Attribute Bonus / Scaling Factor)";
+    public String _usage = "Example: Set 'damageAdditive' to 5.0 for flat +5 base damage. Set 'damageScalingFactor' to control attribute strength.";
 
-public class ScalingConfig {
-
-    private static final File CONFIG_FILE = FabricLoader.getInstance().getConfigDir().resolve("potatoscaling.json")
-            .toFile();
-    private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
-
-    public static ScalingConfig INSTANCE = new ScalingConfig();
-
-    public String _comment = "Formula: Final Damage = (Base * Multiplier) + Additive + Attribute Bonus";
-    public String _usage = "Example: Set 'damageMultiplier' to 1.5 for 50% more damage. 'scalingEntries' format: attribute,operation,value";
-
-    public float damageMultiplier = 1.0f;
     public float damageAdditive = 0.0f;
+    public float damageScalingFactor = 1.0f;
     public List<ScalingEntry> scalingEntries = new ArrayList<>();
 
-    // Internal cache, not serialized
     public transient List<CachedEntry> cachedEntries = new ArrayList<>();
+
+    public ScalingConfig() {
+        scalingEntries.add(new ScalingEntry("ranged_weapon:damage", "ADD", 1.0f));
+    }
 
     public static class ScalingEntry {
         public String attribute;
-        public String operation; // "ADD" or "MULTIPLY"
+        public String operation;
         public float valueMultiplier;
+
+        public ScalingEntry() {
+        }
 
         public ScalingEntry(String attribute, String operation, float valueMultiplier) {
             this.attribute = attribute;
             this.operation = operation;
             this.valueMultiplier = valueMultiplier;
         }
-
-        @Override
-        public String toString() {
-            return attribute + "," + operation + "," + valueMultiplier;
-        }
     }
 
-    public static class CachedEntry {
-        public Identifier attributeId;
-        public Operation op;
-        public float multiplier;
-
-        public CachedEntry(Identifier id, Operation op, float mult) {
-            this.attributeId = id;
-            this.op = op;
-            this.multiplier = mult;
-        }
+    public record CachedEntry(Identifier attributeId, Operation op, float multiplier) {
     }
 
     public enum Operation {
         ADD, MULTIPLY
     }
 
-    public static ScalingConfig get() {
-        if (INSTANCE == null) {
-            load();
-        }
-        return INSTANCE;
-    }
-
-    public static void load() {
-        if (CONFIG_FILE.exists()) {
-            try (FileReader reader = new FileReader(CONFIG_FILE)) {
-                INSTANCE = GSON.fromJson(reader, ScalingConfig.class);
-
-                // Ensure comments are always present and up-to-date
-                INSTANCE._comment = "Formula: Final Damage = (Base * Multiplier) + Additive + Attribute Bonus";
-                INSTANCE._usage = "Example: Set 'damageMultiplier' to 1.5 for 50% more damage. 'scalingEntries' format: attribute,operation,value";
-
-                if (INSTANCE.scalingEntries == null) {
-                    INSTANCE.scalingEntries = new ArrayList<>();
-                }
-            } catch (IOException e) {
-                PotatoScalingMod.LOGGER.error("Failed to load potatoscaling.json", e);
-            }
-        } else {
-            // Setup defaults for a new file
-            INSTANCE.scalingEntries.add(new ScalingEntry("ranged_weapon:damage", "ADD", 1.0f));
-            save();
-        }
-
-        INSTANCE.cacheAttributes();
-    }
-
-    public static void save() {
-        try (FileWriter writer = new FileWriter(CONFIG_FILE)) {
-            GSON.toJson(INSTANCE, writer);
-        } catch (IOException e) {
-            PotatoScalingMod.LOGGER.error("Failed to save potatoscaling.json", e);
-        }
-    }
-
-    private void cacheAttributes() {
-        if (cachedEntries == null)
-            cachedEntries = new ArrayList<>();
+    public void cacheAttributes() {
         cachedEntries.clear();
-
         if (scalingEntries != null) {
             for (ScalingEntry entry : scalingEntries) {
-                cacheEntry(entry);
+                try {
+                    Identifier id = new Identifier(entry.attribute);
+                    Operation op;
+                    try {
+                        op = Operation.valueOf(entry.operation.toUpperCase());
+                    } catch (Exception e) {
+                        op = Operation.ADD;
+                    }
+                    cachedEntries.add(new CachedEntry(id, op, entry.valueMultiplier));
+                } catch (Exception e) {
+                    PotatoScalingMod.LOGGER.warn("Invalid attribute in config: " + entry.attribute);
+                }
             }
-        }
-    }
-
-    private void cacheEntry(ScalingEntry entry) {
-        try {
-            Identifier id = new Identifier(entry.attribute);
-            Operation op = Operation.valueOf(entry.operation.toUpperCase());
-            cachedEntries.add(new CachedEntry(id, op, entry.valueMultiplier));
-        } catch (IllegalArgumentException e) {
-            PotatoScalingMod.LOGGER.warn("Invalid operation in config: " + entry.operation + ". defaulting to ADD.");
-            try {
-                Identifier id = new Identifier(entry.attribute);
-                cachedEntries.add(new CachedEntry(id, Operation.ADD, entry.valueMultiplier));
-            } catch (Exception ex) {
-                PotatoScalingMod.LOGGER.warn("Invalid attribute ID: " + entry.attribute);
-            }
-        } catch (Exception e) {
-            PotatoScalingMod.LOGGER.warn("Invalid attribute ID in config: '" + entry.attribute + "'. Ignoring.");
         }
     }
 }

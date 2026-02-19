@@ -43,7 +43,8 @@ dependencies {
     // modCompileOnly "maven.modrinth:spell-power:${project.spell_power_version}-fabric"
     // modCompileOnly "maven.modrinth:puffish-attributes:${project.puffish_attributes_version}"
     
-    // Config (Optional, but using standard GSON, no extra dep needed yet)
+    // Config
+    modImplementation include("com.github.ZsoltMolnarrr:TinyConfig:2.3.2")
 }
 
 processResources {
